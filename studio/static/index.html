@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+  <meta charset="UTF-8" />
+  <title>OpenVAG Studio — Auto Diagnostika</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #020617; color: #f1f5f9; font-family: "Segoe UI", system-ui, sans-serif; min-height: 100vh; display: flex; flex-direction: column; }
+    header { background: #0f172a; border-bottom: 1px solid #1e293b; padding: 10px 20px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; background: #ef4444; }
+    .dot.on { background: #34d399; box-shadow: 0 0 8px #34d399; }
+    .badge { font-family: monospace; font-size: 12px; background: #1e293b; color: #34d399; padding: 4px 10px; border-radius: 6px; }
+    .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    select, input { background: #1e293b; color: #f1f5f9; border: 1px solid #334155; border-radius: 6px; padding: 7px 10px; font-size: 13px; }
+    button { border: none; border-radius: 7px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; color: #fff; background: #334155; transition: 0.12s; }
+    button:hover { filter: brightness(1.12); }
+    .btn-sky { background: #0284c7; }
+    .btn-green { background: #059669; }
+    .btn-red { background: #dc2626; }
+    .btn-amber { background: #d97706; }
+    .btn-purple { background: #7c3aed; }
+    .app-shell { flex: 1; display: grid; grid-template-columns: 230px 1fr; }
+    @media (max-width: 900px) { .app-shell { grid-template-columns: 1fr; } }
+    nav { background: #0b1120; border-right: 1px solid #1e293b; padding: 16px 12px; display: flex; flex-direction: column; gap: 6px; }
+    .nav-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; padding: 8px 10px 4px; }
+    .nav-btn { width: 100%; text-align: left; background: transparent; color: #cbd5e1; padding: 10px 12px; border-radius: 8px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+    .nav-btn:hover { background: #1e293b; }
+    .nav-btn.active { background: #0284c7; color: #fff; }
+    .workspace { padding: 20px; max-width: 1200px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+    .summary-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .stat-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 10px; padding: 12px 14px; }
+    .stat-lbl { font-size: 11px; color: #94a3b8; }
+    .stat-val { font-size: 18px; font-weight: 700; margin-top: 2px; font-family: monospace; color: #e2e8f0; }
+    .card { background: #0f172a; border: 1px solid #1e293b; border-radius: 12px; padding: 18px; }
+    .card-hdr { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #1e293b; }
+    .grid-2 { display: grid; grid-template-columns: 320px 1fr; gap: 18px; }
+    @media (max-width: 960px) { .grid-2 { grid-template-columns: 1fr; } .summary-strip { grid-template-columns: repeat(2, 1fr); } }
+    .service-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+    .svc-tile { background: #020617; border: 1px solid #1e293b; border-radius: 10px; padding: 16px; text-align: left; display: flex; flex-direction: column; gap: 6px; }
+    .svc-tile:hover { border-color: #38bdf8; }
+    .svc-title { font-size: 15px; font-weight: 700; color: #38bdf8; }
+    .svc-desc { font-size: 12px; color: #94a3b8; font-weight: 400; line-height: 1.4; }
+    .mod-list { display: flex; flex-direction: column; gap: 8px; }
+    .mod-btn { width: 100%; text-align: left; background: #020617; border: 1px solid #1e293b; padding: 10px 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+    .mod-btn:hover, .mod-btn.sel { border-color: #38bdf8; background: #0c192c; }
+    .pill { font-size: 11px; padding: 3px 8px; border-radius: 5px; font-weight: 600; }
+    .pill-ok { background: #064e3b; color: #6ee7b7; }
+    .pill-err { background: #4c0519; color: #fda4af; }
+    .pill-warn { background: #451a03; color: #fcd34d; }
+    .tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+    .tab-btn { background: #1e293b; color: #cbd5e1; padding: 6px 12px; font-size: 12px; }
+    .tab-btn.active { background: #0284c7; color: #fff; }
+    .hidden { display: none !important; }
+    .cells { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 12px 0; }
+    .cell { background: #020617; border: 1px solid #1e293b; border-radius: 8px; padding: 12px; }
+    .cell-lbl { font-size: 11px; color: #94a3b8; }
+    .cell-val { font-size: 20px; font-family: monospace; font-weight: 700; color: #38bdf8; margin-top: 4px; }
+    canvas { width: 100%; height: 220px; background: #020617; border: 1px solid #1e293b; border-radius: 8px; display: block; }
+    .trace-box { background: #020617; border: 1px solid #1e293b; border-radius: 8px; padding: 10px; height: 260px; overflow-y: auto; font-family: monospace; font-size: 12px; line-height: 1.5; }
+    .dtc-item { background: #2a0a14; border: 1px solid #881337; padding: 10px 12px; border-radius: 8px; display: flex; justify-content: space-between; margin-bottom: 8px; }
+    .mono { font-family: monospace; font-size: 12px; color: #94a3b8; }
+    .banner { padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-top: 10px; background: #064e3b; color: #a7f3d0; border: 1px solid #059669; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="dot" id="statusDot"></div>
+      <strong style="font-size:18px;">OpenVAG <span style="color:#38bdf8;">Studio</span></strong>
+      <span id="vinBadge" class="badge hidden"></span>
+    </div>
+    <div class="controls">
+      <select id="profileSelect" style="color:#7dd3fc;">
+        <option value="vag_2013">VAG 1996–2013 (VW / Audi / Škoda)</option>
+        <option value="bmw_eseries">BMW E-Series (D-CAN / DS2)</option>
+        <option value="volvo_p2_p3">Volvo P2/P3 (29-bit CAN)</option>
+        <option value="obd2_universal">Universal OBD-II (Any Car)</option>
+        <option value="uds_modern">Modern UDS (2014+)</option>
+      </select>
+      <select id="modeSelect">
+        <option value="mock">Simulator (Test Mode)</option>
+        <option value="obdlink_elm">OBDLink / ELM-STN (USB)</option>
+        <option value="gs_usb">CANable / gs_usb (WinUSB)</option>
+        <option value="kline">VAG-KKL (K-Line)</option>
+      </select>
+      <select id="ifaceInput" style="max-width:170px;font-family:monospace;"><option value="COM3">COM3</option></select>
+      <button onclick="refreshPorts()" title="Scan USB">↻</button>
+      <button onclick="toggleConnect()" id="connectBtn" class="btn-sky" data-i18n="connect">Pieslēgties</button>
+      <button onclick="toggleLang()" id="langBtn" style="background:#1e293b;border:1px solid #475569;">LV / EN</button>
+    </div>
+  </header>
+
+  <div class="app-shell">
+    <nav>
+      <div class="nav-title" data-i18n="menuTitle">Diagnostika</div>
+      <button class="nav-btn active" onclick="showPage('scan', this)">🔍 <span data-i18n="navScan">Skenēšana & Moduļi</span></button>
+      <button class="nav-btn" onclick="showPage('service', this)">🔧 <span data-i18n="navService">Servisa funkcijas</span></button>
+      <div class="nav-title" data-i18n="menuSys">Sistēma</div>
+      <button class="nav-btn" onclick="showPage('backups', this)">💾 <span data-i18n="navBackups">Rezerves kopijas</span></button>
+      <button class="nav-btn" onclick="showPage('logs', this)">📡 <span data-i18n="navLogs">Žurnāli & Atbalsts</span></button>
+    </nav>
+
+    <div class="workspace">
+      <div class="summary-strip">
+        <div class="stat-card"><div class="stat-lbl" data-i18n="statStatus">Statuss</div><div class="stat-val" id="statConn">Atvienots</div></div>
+        <div class="stat-card"><div class="stat-lbl">VIN</div><div class="stat-val" id="statVin">—</div></div>
+        <div class="stat-card"><div class="stat-lbl" data-i18n="statMods">Moduļi</div><div class="stat-val" id="statMods">0</div></div>
+        <div class="stat-card"><div class="stat-lbl" data-i18n="statFaults">Kļūdas kopā</div><div class="stat-val" id="statFaults" style="color:#fda4af;">0</div></div>
+      </div>
+
+      <!-- PAGE 1: SCAN & MODULES -->
+      <div id="page-scan" class="grid-2">
+        <div class="card">
+          <div class="card-hdr">
+            <strong data-i18n="modTitle">Vadības moduļi</strong>
+            <div style="display:flex;gap:6px;">
+              <button onclick="runAutoScan()" class="btn-green" data-i18n="btnScan">Auto-Scan</button>
+              <button onclick="clearAllDTCs()" class="btn-red" title="Clear All" data-i18n="btnClearAll">Dzēst visas</button>
+            </div>
+          </div>
+          <div id="moduleList" class="mod-list mono" data-i18n="scanHint">Pieslēdzies un spied Auto-Scan.</div>
+          <button onclick="downloadReport()" style="width:100%;margin-top:12px;" data-i18n="btnReport">Saglabāt atskaiti (.txt)</button>
+        </div>
+
+        <div class="card">
+          <div class="card-hdr">
+            <div>
+              <strong id="modTitle" style="font-size:16px;" data-i18n="noMod">Nav izvēlēts modulis</strong>
+              <div id="modSub" class="mono">—</div>
+            </div>
+            <div class="tabs">
+              <button class="tab-btn active" onclick="switchTab('dtcs', this)" data-i18n="tabDtcs">Kļūdas</button>
+              <button class="tab-btn" onclick="switchTab('blocks', this)" data-i18n="tabLive">Parametri</button>
+              <button class="tab-btn" onclick="switchTab('tests', this)" data-i18n="tabTests">Testi</button>
+              <button class="tab-btn" onclick="switchTab('coding', this)" data-i18n="tabCoding">Kodēšana</button>
+            </div>
+          </div>
+
+          <div id="tab-dtcs">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+              <span class="mono" data-i18n="dtcDesc">Saglabātās un aktīvās kļūdas</span>
+              <button onclick="clearDTCs()" class="btn-red" data-i18n="btnClearDtc">Dzēst kļūdas</button>
+            </div>
+            <div id="dtcContainer" class="mono" data-i18n="selectMod">Izvēlies moduli no saraksta kreisajā pusē.</div>
+          </div>
+
+          <div id="tab-blocks" class="hidden">
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+              <button onclick="setGroup(1)" class="tab-btn">Grp 001: Tukšgaita</button>
+              <button onclick="setGroup(11)" class="tab-btn">Grp 011: Turbīna</button>
+              <button onclick="setGroup(13)" class="tab-btn">Grp 013: Sprauslas</button>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <label class="mono">Grp / PID:</label>
+              <input id="blockGroup" type="number" min="1" max="255" value="1" style="width:75px;" />
+              <button onclick="startBlocks()" class="btn-sky" data-i18n="btnStream">Sākt mērījumus</button>
+              <button onclick="stopBlocks()" data-i18n="btnStop">Stop</button>
+              <button onclick="exportCSV()" class="btn-green" style="margin-left:auto;">CSV</button>
+            </div>
+            <div id="blockCells" class="cells"></div>
+            <canvas id="liveChart" width="800" height="220"></canvas>
+          </div>
+
+          <div id="tab-tests" class="hidden">
+            <p class="mono" style="margin-bottom:12px;" data-i18n="testsHint">Izpildmehānismu pārbaude (Actuator / Output Tests):</p>
+            <div class="service-grid">
+              <button class="svc-tile" onclick="runTest('needle_sweep')"><span class="svc-title">Instrument Needle Sweep</span><span class="svc-desc">Testē spidometra un tahometra rādītājus</span></button>
+              <button class="svc-tile" onclick="runTest('cooling_fan')"><span class="svc-title">Radiator Fan Pulse</span><span class="svc-desc">Īslaicīgi ieslēdz dzesēšanas ventilatoru</span></button>
+              <button class="svc-tile" onclick="runTest('fuel_pump')"><span class="svc-title">Fuel Lift Pump</span><span class="svc-desc">Pārbauda degvielas sūkņa darbību</span></button>
+              <button class="svc-tile" onclick="runTest('egr_valve')"><span class="svc-title">EGR Valve Cycle</span><span class="svc-desc">Atver un aizver EGR vārstu</span></button>
+            </div>
+            <div id="testResult" class="banner hidden"></div>
+          </div>
+
+          <div id="tab-coding" class="hidden">
+            <p style="font-size:12px;color:#fcd34d;background:#451a03;padding:10px;border-radius:6px;margin-bottom:12px;" data-i18n="codingWarn">
+              Drošība: Pirms katras izmaiņas automātiski tiek saglabāta rezerves kopija mapē backups/.
+            </p>
+            <div style="margin-bottom:16px;">
+              <div class="mono" style="margin-bottom:6px;">Long / Soft Coding:</div>
+              <div style="display:flex;gap:8px;">
+                <input id="codingInput" style="flex:1;font-family:monospace;" />
+                <button onclick="saveCoding()" class="btn-amber" data-i18n="btnApply">Saglabāt kodējumu</button>
+              </div>
+            </div>
+            <div>
+              <div class="mono" style="margin-bottom:6px;">Adaptation Channel (01–255):</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <input id="adaptChan" value="01" style="width:75px;font-family:monospace;" placeholder="Ch" />
+                <button onclick="readAdapt()" data-i18n="btnRead">Nolasīt</button>
+                <input id="adaptVal" style="flex:1;font-family:monospace;" placeholder="Value" />
+                <button onclick="writeAdapt()" class="btn-amber" data-i18n="btnWrite">Ierakstīt</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PAGE 2: SERVICE FUNCTIONS -->
+      <div id="page-service" class="card hidden">
+        <div class="card-hdr">
+          <strong data-i18n="svcHeader">Ātrās servisa funkcijas (1-klikšķis)</strong>
+          <span class="mono">VAG / OBD-II</span>
+        </div>
+        <div class="service-grid">
+          <button class="svc-tile" onclick="runService('oil_reset')"><span class="svc-title">🛢️ Eļļas servisa nomeste</span><span class="svc-desc">Atiestata eļļas un apkopes intervālu panelī (Mod 17)</span></button>
+          <button class="svc-tile" onclick="runService('epb_open')"><span class="svc-title">🛑 EPB: Atvērt suportus</span><span class="svc-desc">Atvelk elektrisko stāvbremzi aizmugurējo kluču maiņai</span></button>
+          <button class="svc-tile" onclick="runService('epb_close')"><span class="svc-title">🔒 EPB: Aizvērt suportus</span><span class="svc-desc">Nokalibrē un aizver elektrisko stāvbremzi pēc maiņas</span></button>
+          <button class="svc-tile" onclick="runService('dpf_regen')"><span class="svc-title">🔥 DPF kvēpu pārbaude / Reģen.</span><span class="svc-desc">Pārbauda kvēpu slodzi un sagatavo DPF reģenerāciju</span></button>
+          <button class="svc-tile" onclick="runService('bms_reset')"><span class="svc-title">🔋 Akumulatora reģistrācija</span><span class="svc-desc">Piefiksē jauna akumulatora uzstādīšanu (BMS)</span></button>
+          <button class="svc-tile" onclick="runService('tba_align')"><span class="svc-title">💨 Droseles adaptācija (TBA)</span><span class="svc-desc">Nokalibrē droseles vārsta gala pozīcijas</span></button>
+          <button class="svc-tile" onclick="runService('g85_cal')"><span class="svc-title">🎯 Stūres leņķa sensors (G85)</span><span class="svc-desc">Nulles punkta kalibrēšana ABS blokā</span></button>
+        </div>
+        <div id="serviceResult" class="banner hidden"></div>
+      </div>
+
+      <!-- PAGE 3: BACKUPS -->
+      <div id="page-backups" class="card hidden">
+        <div class="card-hdr">
+          <strong data-i18n="bakHeader">Kodēšanas un adaptāciju rezerves kopijas</strong>
+          <button onclick="loadBackups()" class="btn-sky">↻</button>
+        </div>
+        <div id="backupList" class="trace-box"></div>
+      </div>
+
+      <!-- PAGE 4: LOGS & SUPPORT -->
+      <div id="page-logs" class="card hidden">
+        <div class="card-hdr">
+          <strong data-i18n="logHeader">Protokola žurnāls un WhatsApp atbalsts</strong>
+          <div style="display:flex;gap:8px;">
+            <button onclick="exportSessionLog()" class="btn-sky" data-i18n="btnExportLog">Saglabāt & Lejupielādēt žurnālu</button>
+            <button onclick="document.getElementById('traceLog').innerHTML=''">Clear</button>
+          </div>
+        </div>
+        <p class="mono" style="margin-bottom:10px;" data-i18n="logHint">Ja kāda mašīna nepieslēdzas, spied zilo pogu un atsūti lejupielādēto .jsonl failu WhatsApp!</p>
+        <div id="traceLog" class="trace-box"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const I18N = {
+      lv: {
+        connect: "Pieslēgties", disconnect: "Atvienot", menuTitle: "Diagnostika", menuSys: "Sistēma",
+        navScan: "Skenēšana & Moduļi", navService: "Servisa funkcijas", navBackups: "Rezerves kopijas", navLogs: "Žurnāli & Atbalsts",
+        statStatus: "Statuss", statMods: "Moduļi", statFaults: "Kļūdas kopā", modTitle: "Vadības moduļi",
+        btnScan: "Auto-Scan", btnClearAll: "Dzēst visas", scanHint: "Pieslēdzies un spied Auto-Scan.",
+        btnReport: "Saglabāt atskaiti (.txt)", noMod: "Nav izvēlēts modulis", tabDtcs: "Kļūdas", tabLive: "Parametri",
+        tabTests: "Testi", tabCoding: "Kodēšana", dtcDesc: "Saglabātās un aktīvās kļūdas", btnClearDtc: "Dzēst kļūdas",
+        selectMod: "Izvēlies moduli no saraksta.", btnStream: "Sākt mērījumus", btnStop: "Stop",
+        testsHint: "Izpildmehānismu pārbaude:", codingWarn: "Drošība: Pirms izmaiņām automātiski tiek saglabāta rezerves kopija mapē backups/.",
+        btnApply: "Saglabāt kodējumu", btnRead: "Nolasīt", btnWrite: "Ierakstīt",
+        svcHeader: "Ātrās servisa funkcijas (1-klikšķis)", bakHeader: "Kodēšanas rezerves kopijas",
+        logHeader: "Protokola žurnāls un WhatsApp atbalsts", btnExportLog: "Saglabāt & Lejupielādēt žurnālu",
+        logHint: "Ja kāda mašīna nepieslēdzas, spied zilo pogu un atsūti .jsonl failu WhatsApp! +37120026958",
+        connectedTxt: "Pieslēgts", disconnectedTxt: "Atvienots"
+      },
+      en: {
+        connect: "Connect", disconnect: "Disconnect", menuTitle: "Diagnostics", menuSys: "System",
+        navScan: "Scan & Modules", navService: "Service Functions", navBackups: "Backups", navLogs: "Logs & Support",
+        statStatus: "Status", statMods: "Modules", statFaults: "Total Faults", modTitle: "Control Modules",
+        btnScan: "Auto-Scan", btnClearAll: "Clear All", scanHint: "Connect and press Auto-Scan.",
+        btnReport: "Save Scan Report (.txt)", noMod: "No Module Selected", tabDtcs: "Fault Codes", tabLive: "Live Data",
+        tabTests: "Output Tests", tabCoding: "Coding", dtcDesc: "Stored & Active Fault Codes", btnClearDtc: "Clear DTCs",
+        selectMod: "Select a module from the left list.", btnStream: "Stream Live", btnStop: "Stop",
+        testsHint: "Actuator / Output Tests:", codingWarn: "Safety: Every write saves an automatic backup in backups/.",
+        btnApply: "Save Coding", btnRead: "Read", btnWrite: "Write",
+        svcHeader: "Quick Service Functions (1-Click)", bakHeader: "Coding & Adaptation Backups",
+        logHeader: "Protocol Tracer & WhatsApp Support", btnExportLog: "Save & Download Log",
+        logHint: "If a car fails to connect, click the blue button and send the .jsonl file! +37120026958",
+        connectedTxt: "Connected", disconnectedTxt: "Disconnected"
+      }
+    };
+    let lang = 'lv', connected = false, activeAddr = null, blockWs = null, csvRows = [], lastScan = [];
+    const series = [[], [], [], []], colors = ['#38bdf8', '#34d399', '#fbbf24', '#f472b6'];
+
+    function applyLang() {
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const k = el.getAttribute('data-i18n');
+        if (I18N[lang][k]) el.textContent = I18N[lang][k];
+      });
+      connectBtn.textContent = connected ? I18N[lang].disconnect : I18N[lang].connect;
+      statConn.textContent = connected ? I18N[lang].connectedTxt : I18N[lang].disconnectedTxt;
+    }
+    function toggleLang() { lang = lang === 'lv' ? 'en' : 'lv'; applyLang(); }
+    applyLang();
+
+    function showPage(name, btn) {
+      ['scan', 'service', 'backups', 'logs'].forEach(p => document.getElementById(`page-${p}`).classList.toggle('hidden', p !== name));
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      if (name === 'backups') loadBackups();
+    }
+
+    function drawChart() {
+      const c = document.getElementById('liveChart'), ctx = c.getContext('2d');
+      ctx.clearRect(0, 0, c.width, c.height);
+      const all = series.flat();
+      if (all.length < 2) return;
+      const min = Math.min(...all), max = Math.max(...all), span = (max - min) || 1;
+      series.forEach((arr, idx) => {
+        if (arr.length < 2) return;
+        ctx.strokeStyle = colors[idx]; ctx.lineWidth = 2; ctx.beginPath();
+        arr.forEach((v, i) => {
+          const x = (i / 39) * (c.width - 20) + 10;
+          const y = c.height - 15 - ((v - min) / span) * (c.height - 30);
+          i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+      });
+    }
+
+    const traceWs = new WebSocket(`ws://${location.host}/ws/trace`);
+    traceWs.onmessage = (e) => {
+      const d = JSON.parse(e.data);
+      const log = document.getElementById('traceLog');
+      const col = d.dir === 'TX' ? '#38bdf8' : d.dir === 'RX' ? '#34d399' : '#fbbf24';
+      log.innerHTML += `<div><span style="color:#64748b">[${d.ts.toFixed(3)}s]</span> <span style="color:${col}">${d.dir}</span> <span style="color:#94a3b8">${d.proto}</span> ${d.raw} <span style="color:#64748b">// ${d.note}</span></div>`;
+      log.scrollTop = log.scrollHeight;
+    };
+
+    async function refreshPorts() {
+      const res = await fetch('/api/ports');
+      const data = await res.json();
+      ifaceInput.innerHTML = data.ports.length
+        ? data.ports.map(p => `<option value="${p.device}">${p.device} — ${p.desc}</option>`).join('')
+        : `<option value="SIM">Simulator (No USB)</option>`;
+    }
+    refreshPorts();
+
+    async function toggleConnect() {
+      if (!connected) {
+        const res = await fetch('/api/connect', {
+          method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ adapter: modeSelect.value, profile: profileSelect.value, interface: ifaceInput.value })
+        });
+        const data = await res.json();
+        if (!res.ok) return alert(data.detail);
+        connected = true;
+        statusDot.classList.add('on');
+        vinBadge.textContent = `VIN: ${data.vin}`;
+        vinBadge.classList.remove('hidden');
+        statVin.textContent = data.vin;
+      } else {
+        await fetch('/api/disconnect', { method: 'POST' });
+        connected = false; stopBlocks();
+        statusDot.classList.remove('on');
+        vinBadge.classList.add('hidden');
+        statVin.textContent = '—';
+      }
+      applyLang();
+    }
+
+    async function runAutoScan() {
+      const res = await fetch('/api/autoscan');
+      const data = await res.json();
+      if (!res.ok) return alert(data.detail);
+      lastScan = data.modules;
+      statMods.textContent = lastScan.length;
+      statFaults.textContent = lastScan.reduce((acc, m) => acc + m.fault_count, 0);
+      moduleList.innerHTML = lastScan.map(m => `
+        <button onclick="openModule('${m.addr}', this)" class="mod-btn">
+          <div><div style="font-weight:600;">${m.addr} - ${m.name}</div><div class="mono">${m.part_number}</div></div>
+          <span class="pill ${m.fault_count ? 'pill-err' : 'pill-ok'}">${m.fault_count ? m.fault_count + ' Faults' : 'OK'}</span>
+        </button>`).join('');
+    }
+
+    async function clearAllDTCs() {
+      const res = await fetch('/api/clear-all-dtcs', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) return alert(data.detail);
+      await runAutoScan();
+      if (activeAddr) openModule(activeAddr);
+    }
+
+    function downloadReport() {
+      if (!lastScan.length) return alert('Run Auto-Scan first.');
+      const txt = `OpenVAG Studio Scan Report\nVIN: ${statVin.textContent}\n\n` +
+        lastScan.map(m => `[${m.addr}] ${m.name} | ${m.part_number} | Faults: ${m.fault_count}`).join('\n');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([txt], { type: 'text/plain' }));
+      a.download = `scan_report_${statVin.textContent}.txt`; a.click();
+    }
+
+    async function openModule(addr, btn) {
+      activeAddr = addr;
+      if (btn) {
+        document.querySelectorAll('.mod-btn').forEach(b => b.classList.remove('sel'));
+        btn.classList.add('sel');
+      }
+      const res = await fetch(`/api/module/${addr}`);
+      const m = await res.json();
+      modTitle.textContent = `Module ${addr} — ${m.part_number}`;
+      modSub.textContent = `${m.component} | Coding: ${m.coding} | WSC: ${m.wsc}`;
+      codingInput.value = m.coding;
+      renderDTCs(m.dtcs);
+      if (m.readiness && Object.keys(m.readiness).length) {
+        const badges = Object.entries(m.readiness).map(([k, v]) =>
+          `<span class="pill ${(v === 'Ready' || v === 'OFF') ? 'pill-ok' : 'pill-warn'}">${k}: ${v}</span>`
+        ).join(' ');
+        dtcContainer.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">${badges}</div>` + dtcContainer.innerHTML;
+      }
+    }
+
+    function renderDTCs(dtcs) {
+      if (!dtcs.length) {
+        dtcContainer.innerHTML = `<div class="pill pill-ok" style="padding:10px;">OK — No Fault Codes Found.</div>`;
+        return;
+      }
+      dtcContainer.innerHTML = dtcs.map(d => `
+        <div class="dtc-item">
+          <div><div style="font-family:monospace;font-weight:700;color:#fda4af;">${d.code} (${d.vag_code})</div><div>${d.desc}</div></div>
+          <span class="pill" style="background:#1e293b;color:#cbd5e1;height:fit-content;">${d.status}</span>
+        </div>`).join('');
+    }
+
+    async function clearDTCs() {
+      if (!activeAddr) return;
+      await fetch(`/api/module/${activeAddr}/dtcs`, { method: 'DELETE' });
+      renderDTCs([]);
+      runAutoScan();
+    }
+
+    function setGroup(g) { blockGroup.value = g; startBlocks(); }
+
+    function startBlocks() {
+      if (!activeAddr) return alert('Select a module first');
+      stopBlocks(); csvRows = []; series.forEach(s => s.length = 0);
+      blockWs = new WebSocket(`ws://${location.host}/ws/blocks/${activeAddr}/${blockGroup.value}`);
+      blockWs.onmessage = (e) => {
+        const d = JSON.parse(e.data);
+        blockCells.innerHTML = d.cells.map((c, i) => `
+          <div class="cell"><div class="cell-lbl" style="color:${colors[i]}">${c.label}</div>
+          <div class="cell-val">${c.value} <span style="font-size:12px;color:#94a3b8;">${c.unit}</span></div></div>`).join('');
+        d.cells.forEach((c, i) => { series[i].push(Number(c.value) || 0); if (series[i].length > 40) series[i].shift(); });
+        drawChart();
+        csvRows.push([d.ts, ...d.cells.map(c => c.value)].join(','));
+      };
+    }
+
+    function stopBlocks() { if (blockWs) { blockWs.close(); blockWs = null; } }
+
+    function exportCSV() {
+      if (!csvRows.length) return alert('No logged data yet.');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob(["timestamp,cell1,cell2,cell3,cell4\n" + csvRows.join("\n")], { type: 'text/csv' }));
+      a.download = `openvag_mod${activeAddr}_grp${blockGroup.value}.csv`; a.click();
+    }
+
+    async function saveCoding() {
+      if (!activeAddr) return;
+      const res = await fetch(`/api/module/${activeAddr}/coding`, {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ coding: codingInput.value })
+      });
+      const data = await res.json();
+      if (!res.ok) return alert(data.detail);
+      alert('OK! Backup saved.');
+    }
+
+    async function readAdapt() {
+      if (!activeAddr) return alert('Select a module first');
+      const res = await fetch(`/api/module/${activeAddr}/adaptation/${adaptChan.value}`);
+      const data = await res.json();
+      if (!res.ok) return alert(data.detail);
+      adaptVal.value = data.value;
+    }
+
+    async function writeAdapt() {
+      if (!activeAddr) return alert('Select a module first');
+      const res = await fetch(`/api/module/${activeAddr}/adaptation/${adaptChan.value}`, {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ value: adaptVal.value })
+      });
+      const data = await res.json();
+      if (!res.ok) return alert(data.detail);
+      alert(`Channel ${data.channel} updated (${data.old} -> ${data.new}). Backup saved.`);
+    }
+
+    async function runTest(testId) {
+      if (!activeAddr) return alert('Select a module first');
+      const res = await fetch(`/api/module/${activeAddr}/output-test/${testId}`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) return alert(data.detail);
+      testResult.textContent = data.message;
+      testResult.classList.remove('hidden');
+    }
+
+    async function runService(action) {
+      const res = await fetch(`/api/service/${action}`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) return alert(data.detail);
+      serviceResult.textContent = data.message;
+      serviceResult.classList.remove('hidden');
+    }
+
+    async function loadBackups() {
+      const res = await fetch('/api/backups');
+      const data = await res.json();
+      backupList.innerHTML = data.backups.length
+        ? data.backups.map(b => `<div>[${b.ts}] VIN:${b.vin} Mod:0x${b.addr} (${b.type}) <span style="color:#fcd34d">${b.old}</span> → <span style="color:#34d399">${b.new}</span></div>`).join('')
+        : 'Nav rezerves kopiju.';
+    }
+
+    async function exportSessionLog() {
+      const res = await fetch('/api/export-log', { method: 'POST' });
+      const info = await res.json();
+      window.location.href = `/api/download-log/${info.filename}`;
+    }
+
+    function switchTab(name, btn) {
+      ['dtcs', 'blocks', 'tests', 'coding'].forEach(t => document.getElementById(`tab-${t}`).classList.toggle('hidden', t !== name));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+    }
+  </script>
+</body>
+</html>
