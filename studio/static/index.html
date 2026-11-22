@@ -87,6 +87,7 @@
       <select id="ifaceInput" style="max-width:170px;font-family:monospace;"><option value="COM3">COM3</option></select>
       <button onclick="refreshPorts()" title="Scan USB">↻</button>
       <button onclick="toggleConnect()" id="connectBtn" class="btn-sky" data-i18n="connect">Pieslēgties</button>
+      <button onclick="checkUpdates(true)" id="verBtn" class="btn-purple" title="Check for Updates">v1.0.0 ↻</button>
       <button onclick="toggleLang()" id="langBtn" style="background:#1e293b;border:1px solid #475569;">LV / EN</button>
     </div>
   </header>
@@ -116,7 +117,7 @@
             <strong data-i18n="modTitle">Vadības moduļi</strong>
             <div style="display:flex;gap:6px;">
               <button onclick="runAutoScan()" class="btn-green" data-i18n="btnScan">Auto-Scan</button>
-              <button onclick="clearAllDTCs()" class="btn-red" title="Clear All" data-i18n="btnClearAll">Dzēst visas</button>
+              <button onclick="clearAllDTCs()" class="btn-red" data-i18n="btnClearAll">Dzēst visas</button>
             </div>
           </div>
           <div id="moduleList" class="mod-list mono" data-i18n="scanHint">Pieslēdzies un spied Auto-Scan.</div>
@@ -142,7 +143,7 @@
               <span class="mono" data-i18n="dtcDesc">Saglabātās un aktīvās kļūdas</span>
               <button onclick="clearDTCs()" class="btn-red" data-i18n="btnClearDtc">Dzēst kļūdas</button>
             </div>
-            <div id="dtcContainer" class="mono" data-i18n="selectMod">Izvēlies moduli no saraksta kreisajā pusē.</div>
+            <div id="dtcContainer" class="mono" data-i18n="selectMod">Izvēlies moduli no saraksta.</div>
           </div>
 
           <div id="tab-blocks" class="hidden">
@@ -163,7 +164,7 @@
           </div>
 
           <div id="tab-tests" class="hidden">
-            <p class="mono" style="margin-bottom:12px;" data-i18n="testsHint">Izpildmehānismu pārbaude (Actuator / Output Tests):</p>
+            <p class="mono" style="margin-bottom:12px;" data-i18n="testsHint">Izpildmehānismu pārbaude:</p>
             <div class="service-grid">
               <button class="svc-tile" onclick="runTest('needle_sweep')"><span class="svc-title">Instrument Needle Sweep</span><span class="svc-desc">Testē spidometra un tahometra rādītājus</span></button>
               <button class="svc-tile" onclick="runTest('cooling_fan')"><span class="svc-title">Radiator Fan Pulse</span><span class="svc-desc">Īslaicīgi ieslēdz dzesēšanas ventilatoru</span></button>
@@ -175,7 +176,7 @@
 
           <div id="tab-coding" class="hidden">
             <p style="font-size:12px;color:#fcd34d;background:#451a03;padding:10px;border-radius:6px;margin-bottom:12px;" data-i18n="codingWarn">
-              Drošība: Pirms katras izmaiņas automātiski tiek saglabāta rezerves kopija mapē backups/.
+              Drošība: Pirms izmaiņām automātiski tiek saglabāta rezerves kopija mapē backups/.
             </p>
             <div style="margin-bottom:16px;">
               <div class="mono" style="margin-bottom:6px;">Long / Soft Coding:</div>
@@ -228,13 +229,29 @@
       <div id="page-logs" class="card hidden">
         <div class="card-hdr">
           <strong data-i18n="logHeader">Protokola žurnāls un WhatsApp atbalsts</strong>
-          <div style="display:flex;gap:8px;">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button onclick="checkUpdates(true)" class="btn-purple" data-i18n="btnCheckUpd">Pārbaudīt atjauninājumus</button>
             <button onclick="exportSessionLog()" class="btn-sky" data-i18n="btnExportLog">Saglabāt & Lejupielādēt žurnālu</button>
             <button onclick="document.getElementById('traceLog').innerHTML=''">Clear</button>
           </div>
         </div>
-        <p class="mono" style="margin-bottom:10px;" data-i18n="logHint">Ja kāda mašīna nepieslēdzas, spied zilo pogu un atsūti lejupielādēto .jsonl failu WhatsApp!</p>
+        <p id="logHintText" class="mono" style="margin-bottom:10px;"></p>
         <div id="traceLog" class="trace-box"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Update Prompt Modal -->
+  <div id="updateModal" class="hidden" style="position:fixed;inset:0;background:rgba(2,6,23,0.82);display:flex;align-items:center;justify-content:center;z-index:50;">
+    <div class="card" style="max-width:440px;width:90%;border-color:#0284c7;">
+      <div class="card-hdr">
+        <strong id="updTitle" style="color:#38bdf8;">Pieejams jauns atjauninājums!</strong>
+        <span id="updVer" class="badge"></span>
+      </div>
+      <p id="updNotes" style="font-size:14px;color:#e2e8f0;line-height:1.5;margin-bottom:16px;"></p>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button onclick="document.getElementById('updateModal').classList.add('hidden')" id="updLaterBtn">Vēlāk</button>
+        <button onclick="applyUpdate()" class="btn-green" id="updNowBtn">Atjaunināt tagad</button>
       </div>
     </div>
   </div>
@@ -253,8 +270,7 @@
         btnApply: "Saglabāt kodējumu", btnRead: "Nolasīt", btnWrite: "Ierakstīt",
         svcHeader: "Ātrās servisa funkcijas (1-klikšķis)", bakHeader: "Kodēšanas rezerves kopijas",
         logHeader: "Protokola žurnāls un WhatsApp atbalsts", btnExportLog: "Saglabāt & Lejupielādēt žurnālu",
-        logHint: "Ja kāda mašīna nepieslēdzas, spied zilo pogu un atsūti .jsonl failu WhatsApp! +37120026958",
-        connectedTxt: "Pieslēgts", disconnectedTxt: "Atvienots"
+        btnCheckUpd: "Pārbaudīt atjauninājumus", connectedTxt: "Pieslēgts", disconnectedTxt: "Atvienots"
       },
       en: {
         connect: "Connect", disconnect: "Disconnect", menuTitle: "Diagnostics", menuSys: "System",
@@ -268,12 +284,19 @@
         btnApply: "Save Coding", btnRead: "Read", btnWrite: "Write",
         svcHeader: "Quick Service Functions (1-Click)", bakHeader: "Coding & Adaptation Backups",
         logHeader: "Protocol Tracer & WhatsApp Support", btnExportLog: "Save & Download Log",
-        logHint: "If a car fails to connect, click the blue button and send the .jsonl file! +37120026958",
-        connectedTxt: "Connected", disconnectedTxt: "Disconnected"
+        btnCheckUpd: "Check for Updates", connectedTxt: "Connected", disconnectedTxt: "Disconnected"
       }
     };
+
     let lang = 'lv', connected = false, activeAddr = null, blockWs = null, csvRows = [], lastScan = [];
+    let pendingUpdateUrl = null, appInfo = { version: '1.0.0', whatsapp: '' };
     const series = [[], [], [], []], colors = ['#38bdf8', '#34d399', '#fbbf24', '#f472b6'];
+
+    function refreshLogHint() {
+      logHintText.textContent = lang === 'lv'
+        ? `Ja mašīna nepieslēdzas, spied zilo pogu un atsūti .jsonl failu WhatsApp: ${appInfo.whatsapp}`
+        : `If a car fails to connect, download the .jsonl log and send on WhatsApp: ${appInfo.whatsapp}`;
+    }
 
     function applyLang() {
       document.querySelectorAll('[data-i18n]').forEach(el => {
@@ -282,6 +305,7 @@
       });
       connectBtn.textContent = connected ? I18N[lang].disconnect : I18N[lang].connect;
       statConn.textContent = connected ? I18N[lang].connectedTxt : I18N[lang].disconnectedTxt;
+      refreshLogHint();
     }
     function toggleLang() { lang = lang === 'lv' ? 'en' : 'lv'; applyLang(); }
     applyLang();
@@ -514,6 +538,59 @@
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       if (btn) btn.classList.add('active');
     }
+
+    async function loadAppInfoAndCheckUpdates() {
+      try {
+        const r = await fetch('/api/app-info');
+        if (r.ok) {
+          appInfo = await r.json();
+          verBtn.textContent = `v${appInfo.version} ↻`;
+          refreshLogHint();
+        }
+        checkUpdates(false);
+      } catch (e) {}
+    }
+
+    async function checkUpdates(manual) {
+      try {
+        const res = await fetch('/api/check-update');
+        const d = await res.json();
+        if (d.available) {
+          pendingUpdateUrl = d.download_url;
+          updTitle.textContent = lang === 'lv' ? 'Pieejams jauns atjauninājums!' : 'New Update Available!';
+          updVer.textContent = `v${d.current} → v${d.latest}`;
+          updNotes.textContent = (lang === 'lv' ? d.notes_lv : d.notes_en) || 'Fixes & improvements.';
+          updLaterBtn.textContent = lang === 'lv' ? 'Vēlāk' : 'Later';
+          updNowBtn.textContent = lang === 'lv' ? 'Atjaunināt tagad' : 'Update Now';
+          updateModal.classList.remove('hidden');
+        } else if (manual) {
+          alert(d.offline
+            ? (lang === 'lv' ? 'Nav interneta savienojuma (WiFi).' : 'No internet connection (WiFi).')
+            : (lang === 'lv' ? `Tev jau ir jaunākā versija (v${d.current}).` : `You are on the latest version (v${d.current}).`));
+        }
+      } catch (e) {
+        if (manual) alert('Update check failed.');
+      }
+    }
+
+    async function applyUpdate() {
+      if (!pendingUpdateUrl) return;
+      updNowBtn.disabled = true;
+      updNowBtn.textContent = lang === 'lv' ? 'Lejupielādē...' : 'Downloading...';
+      const res = await fetch('/api/apply-update', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ download_url: pendingUpdateUrl })
+      });
+      const d = await res.json();
+      if (!res.ok) { updNowBtn.disabled = false; return alert(d.detail); }
+      if (d.restarting) {
+        updNotes.textContent = lang === 'lv' ? 'Atjaunināts! Programma tūlīt pārstartēsies...' : 'Updated! App is restarting...';
+      } else {
+        alert(d.message);
+      }
+    }
+
+    loadAppInfoAndCheckUpdates();
   </script>
 </body>
 </html>

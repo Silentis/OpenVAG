@@ -5,7 +5,9 @@ from pydantic import BaseModel
 from serial.tools import list_ports
 
 from studio.bridge import DiagnosticBridge
+from studio.config import APP_VERSION, SUPPORT_WHATSAPP
 from studio.paths import BUNDLE_DIR, LOG_DIR
+from studio.updater import check_for_update, download_and_apply_update
 
 app = FastAPI(title="OpenVAG Studio")
 bridge = DiagnosticBridge()
@@ -25,9 +27,31 @@ class AdaptReq(BaseModel):
     value: str
 
 
+class UpdateReq(BaseModel):
+    download_url: str
+
+
 @app.get("/")
 async def index():
     return FileResponse(BUNDLE_DIR / "studio" / "static" / "index.html")
+
+
+@app.get("/api/app-info")
+async def api_app_info():
+    return {"version": APP_VERSION, "whatsapp": SUPPORT_WHATSAPP}
+
+
+@app.get("/api/check-update")
+async def api_check_update():
+    return await asyncio.to_thread(check_for_update)
+
+
+@app.post("/api/apply-update")
+async def api_apply_update(req: UpdateReq):
+    try:
+        return await asyncio.to_thread(download_and_apply_update, req.download_url)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.get("/api/ports")
