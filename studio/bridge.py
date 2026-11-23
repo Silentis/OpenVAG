@@ -2,6 +2,7 @@ import asyncio
 import json
 import math
 import time
+import subprocess
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -48,7 +49,35 @@ BRAND_MODULES = {
 
 class DiagnosticBridge:
     """Unified Multi-Brand Bridge: VAG (PyVCDS) + BMW + Volvo + Universal OBD-II + UDS."""
-
+    
+    def scan_usb_devices(self) -> List[Dict[str, Any]]:
+        try:
+            ps_cmd = (
+                "Get-PnpDevice -PresentOnly | "
+                "Where-Object { $_.InstanceId -match 'USB' -and ($_.FriendlyName -match 'USB|Serial|COM|FTDI|Ross|OBD|VAG|CH340|CAN') } | "
+                "Select-Object Status,Class,FriendlyName,InstanceId | ConvertTo-Json"
+            )
+            raw = subprocess.check_output(
+                ["powershell", "-NoProfile", "-Command", ps_cmd],
+                text=True,
+                timeout=6,
+                creationflags=0x08000000,  # CREATE_NO_WINDOW
+            ).strip()
+            if not raw:
+                return []
+            parsed = json.loads(raw)
+            items = parsed if isinstance(parsed, list) else [parsed]
+            for it in items:
+                self._emit_trace(
+                    "SYS", "USB-SCAN",
+                    str(it.get("InstanceId", "")),
+                    f"{it.get('FriendlyName', '')} [{it.get('Status', '')}]",
+                )
+            return items
+        except Exception as e:
+            self._emit_trace("SYS", "USB-ERR", "--", str(e))
+            return []
+        
     def __init__(self):
         self.connected: bool = False
         self.adapter: str = "mock"

@@ -233,6 +233,7 @@
             <button onclick="checkUpdates(true)" class="btn-purple" data-i18n="btnCheckUpd">Pārbaudīt atjauninājumus</button>
             <button onclick="exportSessionLog()" class="btn-sky" data-i18n="btnExportLog">Saglabāt & Lejupielādēt žurnālu</button>
             <button onclick="document.getElementById('traceLog').innerHTML=''">Clear</button>
+            <button onclick="scanUsbHardware()" class="btn-amber" data-i18n="btnUsbScan">Pārbaudīt USB kabeli</button>
           </div>
         </div>
         <p id="logHintText" class="mono" style="margin-bottom:10px;"></p>
@@ -405,6 +406,19 @@
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([txt], { type: 'text/plain' }));
       a.download = `scan_report_${statVin.textContent}.txt`; a.click();
+    }
+
+    async function scanUsbHardware() {
+      const res = await fetch('/api/usb-devices');
+      const d = await res.json();
+      if (!d.devices.length) {
+        alert(lang === 'lv' ? 'Netika atrasts neviens USB/OBD kabelis. Pārbaudi, vai iesprausts!' : 'No USB/OBD cable detected.');
+        return;
+      }
+      alert(
+        (lang === 'lv' ? 'Atrastās USB ierīces (saglabātas žurnālā):\n\n' : 'Detected USB devices (saved to log):\n\n') +
+        d.devices.map(x => `• ${x.FriendlyName}\n  ${x.InstanceId}`).join('\n\n')
+      );
     }
 
     async function openModule(addr, btn) {

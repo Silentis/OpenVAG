@@ -162,6 +162,10 @@ async def api_export_log():
 async def api_download_log(filename: str):
     return FileResponse(LOG_DIR / filename, filename=filename, media_type="application/jsonl")
 
+@app.get("/api/usb-devices")
+async def api_usb_devices():
+    devices = await asyncio.to_thread(bridge.scan_usb_devices)
+    return {"devices": devices}
 
 @app.websocket("/ws/blocks/{addr}/{group}")
 async def ws_blocks(websocket: WebSocket, addr: str, group: int):

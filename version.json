@@ -1,6 +1,6 @@
 {
-  "version": "1.0.1",
-  "notes_lv": "Pievienota atjauninājumu pārbaudes poga",
-  "notes_en": "Added update check button",
+  "version": "1.0.3",
+  "notes_lv": "Pievienota USB kabeļa noteikšana",
+  "notes_en": "Added USB cable detection",
   "download_url": "https://github.com/Silentis/OpenVAG/releases/latest/download/OpenVAG_Studio.exe"
 }
